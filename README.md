@@ -109,11 +109,15 @@ In your existing `main.py`:
 
 ```python
 from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 from google_auth.app.api import router as api_router
 from google_auth.app.auth import router as auth_router
 from google_auth.app.config import settings
 
 app = FastAPI()
+
+# Required by Authlib for OAuth state storage
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 # Mount static files
 from fastapi.staticfiles import StaticFiles

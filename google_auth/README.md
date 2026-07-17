@@ -181,31 +181,34 @@ This template includes production-ready security measures:
 ## Project Structure
 
 ```
-my-app/
-├── app/
-│   ├── api.py              # API endpoints (/api/me, /api/refresh)
-│   ├── auth.py             # Google OAuth routes
-│   ├── config.py           # Settings configuration
-│   └── dependencies.py     # JWT utilities
-├── templates/
-│   ├── pages/              # Page templates
-│   │   ├── home.html       # Landing page
-│   │   ├── login.html      # Sign in page
-│   │   ├── dashboard.html  # User dashboard
-│   │   └── auth_success.html
-│   ├── partials/           # Reusable components
-│   │   ├── navbar.html
-│   │   └── footer.html
-│   └── base.html           # Base template
-├── static/
-│   ├── css/                # Stylesheets
-│   └── js/                 # Client scripts
-├── .env.example            # Environment template
-├── .env                    # Your config (git-ignored)
-├── main.py                 # Main application entry point
-├── pyproject.toml          # Dependencies
-├── AGENTS.md               # AI assistant rules
-└── README.md               # This file
+.
+├── main.py                     # Entry point
+├── google_auth/                # All auth-related code
+│   ├── __init__.py
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── api.py              # API endpoints (/api/me, /api/refresh)
+│   │   ├── auth.py             # Google OAuth routes
+│   │   ├── config.py           # Settings (pydantic-settings)
+│   │   └── dependencies.py     # JWT utilities
+│   ├── static/
+│   │   ├── css/                # Stylesheets
+│   │   └── js/                 # Client scripts
+│   ├── templates/
+│   │   ├── pages/              # Page templates
+│   │   │   ├── home.html       # Landing page
+│   │   │   ├── login.html      # Sign in page
+│   │   │   ├── dashboard.html  # User dashboard
+│   │   │   └── auth_success.html
+│   │   ├── partials/           # Reusable components
+│   │   │   ├── navbar.html
+│   │   │   └── footer.html
+│   │   └── base.html           # Base template
+│   ├── AGENTS.md               # AI assistant rules
+│   └── README.md               # This file
+├── .env                        # Your config (git-ignored)
+├── .env.example                # Environment template
+└── pyproject.toml              # Dependencies
 ```
 
 ---

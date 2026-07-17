@@ -71,6 +71,8 @@ model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 **File: `main.py`** (in project root)
 
 ```python
+from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 from google_auth.app.config import settings
 from google_auth.app.api import router as api_router
 from google_auth.app.auth import router as auth_router
@@ -80,6 +82,9 @@ if settings.SECRET_KEY == "change-me" or settings.JWT_SECRET_KEY == "change-me":
     raise RuntimeError("SECURITY: Change default secrets!")
 
 app = FastAPI(title=settings.PROJECT_NAME, docs_url="/docs")
+
+# Required by Authlib for OAuth state storage
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 # Middleware, routes, etc.
 app.include_router(auth_router)

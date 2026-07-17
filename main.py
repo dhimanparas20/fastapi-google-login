@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
 from google_auth.app.api import router as api_router
 from google_auth.app.auth import router as auth_router
@@ -16,6 +17,14 @@ if settings.SECRET_KEY == "change-me" or settings.JWT_SECRET_KEY == "change-me":
     )
 
 app = FastAPI(title=settings.PROJECT_NAME, docs_url="/docs")
+
+# Required by Authlib for OAuth state storage
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    session_cookie="session",
+    max_age=3600,
+)
 
 
 @app.middleware("http")
