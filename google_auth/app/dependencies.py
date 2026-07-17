@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
-from app.config import settings
+from google_auth.app.config import settings
 
 ALGORITHM = "HS256"
 

@@ -4,8 +4,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.templating import Jinja2Templates
 from authlib.integrations.starlette_client import OAuth
 
-from app.config import settings
-from app.dependencies import (
+from google_auth.app.config import settings
+from google_auth.app.dependencies import (
     create_access_token,
     create_refresh_token,
     revoke_token,
@@ -13,7 +13,7 @@ from app.dependencies import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="google_auth/templates")
 security = HTTPBearer(auto_error=False)
 
 oauth = OAuth()

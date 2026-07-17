@@ -4,9 +4,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.api import router as api_router
-from app.auth import router as auth_router
-from app.config import settings
+from google_auth.app.api import router as api_router
+from google_auth.app.auth import router as auth_router
+from google_auth.app.config import settings
 
 # Validate critical security settings on startup
 if settings.SECRET_KEY == "change-me" or settings.JWT_SECRET_KEY == "change-me":
@@ -84,9 +84,9 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="google_auth/static"), name="static")
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="google_auth/templates")
 
 
 def _ctx(request: Request, **extra):

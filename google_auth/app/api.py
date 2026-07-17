@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.dependencies import (
+from google_auth.app.dependencies import (
     create_access_token,
     create_refresh_token,
     revoke_token,
