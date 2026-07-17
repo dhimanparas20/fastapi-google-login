@@ -418,6 +418,52 @@ async def protected_page(
 
 ---
 
+## Security Architecture
+
+### Token Transfer (OAuth Callback)
+**NEVER pass tokens via URL query params** - they leak to logs, browser history, Referer header.
+
+Current implementation uses signed session cookie:
+```
+/auth/callback → Set-Cookie: _auth_tokens (httponly, secure) → Redirect to /auth/success
+/auth/success → Read cookie → Set localStorage → Delete cookie
+```
+
+### Security Headers (Applied via Middleware)
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; ...`
+- `Strict-Transport-Security: max-age=31536000` (HTTPS only)
+
+### Rate Limiting
+- In-memory rate limiter: 30 requests per 60 seconds per IP
+- **PRODUCTION**: Replace with Redis-backed rate limiter (slowapi)
+
+### Input Validation
+- Error query params validated against whitelist: `auth_failed`, `no_user_info`, `session_expired`
+- Never render user input directly in templates without escaping
+
+### Token Security
+- Tokens use `jti` claim for revocation support
+- Refresh tokens rotate on use (old token revoked)
+- Tokens passed via `Authorization: Bearer <header>` only
+- Frontend checks token expiry before API calls
+
+### Secret Key Validation
+App refuses to start if `SECRET_KEY` or `JWT_SECRET_KEY` equals "change-me"
+
+### CORS Configuration
+```python
+allow_origins=[settings.APP_BASE_URL]  # Specific origin only
+allow_methods=["GET", "POST"]          # Minimal methods
+allow_headers=["Authorization", "Content-Type"]  # Required headers only
+```
+
+---
+
 ## Development Commands
 
 ```bash
@@ -445,13 +491,15 @@ uv remove package-name
 ## Production Checklist
 
 Before deploying:
-- [ ] Set `APP_BASE_URL` to your production domain
-- [ ] Generate new `SECRET_KEY` and `JWT_SECRET_KEY`
+- [ ] Set `APP_BASE_URL` to your production domain (must be HTTPS)
+- [ ] Generate new `SECRET_KEY` and `JWT_SECRET_KEY` (app won't start with defaults)
 - [ ] Replace in-memory `_revoked_jtis` with Redis/database
 - [ ] Add database for user storage (currently stateless)
-- [ ] Enable HTTPS
+- [ ] Enable HTTPS (app adds HSTS header automatically)
 - [ ] Update Google OAuth redirect URIs to production URL
 - [ ] Set `PROJECT_NAME` and `PROJECT_TAGLINE`
+- [ ] Disable `/docs` endpoint or add auth protection
+- [ ] Set up proper logging (tokens are NOT logged in requests)
 
 ---
 

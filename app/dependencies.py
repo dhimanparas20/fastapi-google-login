@@ -63,3 +63,13 @@ def verify_token(token: str, token_type: str = "access") -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
         )
+
+
+def decode_token_unsafe(token: str) -> dict | None:
+    """Decode token without raising exceptions. Used for optional auth checks."""
+    try:
+        return jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM]
+        )
+    except JWTError:
+        return None

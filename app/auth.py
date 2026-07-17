@@ -25,6 +25,9 @@ oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 
+# Valid error codes to prevent XSS via error param
+VALID_ERROR_CODES = {"auth_failed", "no_user_info", "session_expired"}
+
 
 @router.get("/login")
 async def login(request: Request):
@@ -53,14 +56,33 @@ async def callback(request: Request):
     access_token = create_access_token(data=user_data)
     refresh_token = create_refresh_token(data=user_data)
 
-    return RedirectResponse(
-        url=f"/auth/success?access_token={access_token}&refresh_token={refresh_token}"
+    # Use signed session cookie to pass tokens (avoids URL leakage)
+    response = RedirectResponse(url="/auth/success")
+    response.set_cookie(
+        key="_auth_tokens",
+        value=f"{access_token}|{refresh_token}",
+        httponly=True,
+        secure=settings.APP_BASE_URL.startswith("https"),
+        samesite="lax",
+        max_age=60,  # Short-lived - only for the redirect
     )
+    return response
 
 
 @router.get("/success")
-async def auth_success(request: Request, access_token: str, refresh_token: str):
-    return templates.TemplateResponse(
+async def auth_success(request: Request):
+    # Retrieve tokens from signed session cookie
+    tokens = request.cookies.get("_auth_tokens")
+    if not tokens or "|" not in tokens:
+        return RedirectResponse(url="/login?error=session_expired")
+
+    parts = tokens.split("|", 1)
+    if len(parts) != 2:
+        return RedirectResponse(url="/login?error=session_expired")
+
+    access_token, refresh_token = parts
+
+    response = templates.TemplateResponse(
         request,
         "pages/auth_success.html",
         {
@@ -70,6 +92,9 @@ async def auth_success(request: Request, access_token: str, refresh_token: str):
             "refresh_token": refresh_token,
         },
     )
+    # Clear the cookie after use
+    response.delete_cookie("_auth_tokens")
+    return response
 
 
 @router.post("/logout")

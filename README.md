@@ -98,8 +98,10 @@ Put one output as `SECRET_KEY` and the other as `JWT_SECRET_KEY`.
 ## Step 5: Run the Server
 
 ```bash
-uv run uvicorn app:app --reload --port 8000
+uv run uvicorn main:app --reload --port 8000
 ```
+
+**Note:** The app will refuse to start if `SECRET_KEY` or `JWT_SECRET_KEY` are still "change-me". Generate real keys first.
 
 Open your browser and go to: **http://127.0.0.1:8000**
 
@@ -120,9 +122,11 @@ Open your browser and go to: **http://127.0.0.1:8000**
    ↓
 5. Server creates JWT access + refresh tokens
    ↓
-6. Tokens stored in browser's localStorage
+6. Tokens passed via httponly cookie (NOT URL)
    ↓
-7. API calls include: Authorization: Bearer <token>
+7. /auth/success reads cookie, sets localStorage, deletes cookie
+   ↓
+8. API calls include: Authorization: Bearer <token>
 ```
 
 ### Token Management
@@ -142,6 +146,35 @@ When you click "Sign Out", the server revokes the token using a JTI (JWT ID) sys
 4. Revoked tokens are rejected immediately
 
 **Production note:** The revocation list is in-memory. For production, use Redis or a database.
+
+---
+
+## Security Features
+
+This template includes production-ready security measures:
+
+### Security Headers
+- `X-Content-Type-Options: nosniff` - Prevents MIME type sniffing
+- `X-Frame-Options: DENY` - Prevents clickjacking
+- `X-XSS-Protection: 1; mode=block` - XSS protection
+- `Referrer-Policy: strict-origin-when-cross-origin` - Controls referrer info
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()` - Restricts browser features
+- `Content-Security-Policy` - Controls allowed resources
+- `Strict-Transport-Security` - HSTS (HTTPS only)
+
+### Rate Limiting
+- 30 requests per 60 seconds per IP
+- Returns 429 status code when exceeded
+
+### Token Security
+- Tokens transferred via httponly cookie (not URL params)
+- Frontend validates token expiry before API calls
+- Refresh tokens rotate on use (old token revoked)
+- App refuses to start with default secret keys
+
+### Input Validation
+- Error parameters validated against whitelist
+- All user data properly escaped in templates
 
 ---
 
@@ -169,8 +202,9 @@ my-app/
 │   └── js/                 # Client scripts
 ├── .env.example            # Environment template
 ├── .env                    # Your config (git-ignored)
-├── app.py                  # Main application
+├── main.py                 # Main application entry point
 ├── pyproject.toml          # Dependencies
+├── AGENTS.md               # AI assistant rules
 └── README.md               # This file
 ```
 
@@ -202,7 +236,7 @@ PROJECT_TAGLINE=Your tagline here
 {% endblock %}
 ```
 
-2. Add a route in `app.py`:
+2. Add a route in `main.py`:
 
 ```python
 @app.get("/your-page", response_class=HTMLResponse)
@@ -485,16 +519,19 @@ curl -v -X GET "http://127.0.0.1:8000/api/me" \
 
 ## Database Integration (Production)
 
-This template stores user data in JWT tokens (stateless). For production:
+This template stores user data in JWT tokens (stateless). For production, you should persist user data:
 
-1. **Add a database** (PostgreSQL, MySQL, SQLite):
+### 1. Add a database driver
 
 ```bash
-# Example with SQLAlchemy + PostgreSQL
+# PostgreSQL (recommended for production)
 uv add sqlalchemy asyncpg
+
+# Or SQLite for simpler setups
+uv add sqlalchemy aiosqlite
 ```
 
-2. **Create user model** in a new `app/models.py`:
+### 2. Create user model in `app/models.py`
 
 ```python
 from sqlalchemy import Column, String
@@ -505,15 +542,17 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True)  # Google's sub ID
-    email = Column(String, unique=True)
+    email = Column(String, unique=True, index=True)
     name = Column(String)
     picture = Column(String)
 ```
 
-3. **Save user on login** in `app/auth.py` callback:
+### 3. Save user on login in `app/auth.py` callback
 
 ```python
 # After getting user_info from Google
+from app.models import User, db
+
 user = db.query(User).filter(User.id == user_data["sub"]).first()
 if not user:
     user = User(**user_data)
@@ -521,10 +560,10 @@ if not user:
     db.commit()
 ```
 
-4. **Store revoked tokens** in database or Redis:
+### 4. Store revoked tokens in database or Redis
 
 ```python
-# Example with Redis
+# Example with Redis (recommended)
 import redis
 revoked = redis.Redis()
 
@@ -534,6 +573,59 @@ def revoke_token(jti: str):
 def is_token_revoked(jti: str) -> bool:
     return revoked.exists(f"revoked:{jti}")
 ```
+
+---
+
+## Production Notes
+
+### In-Memory Limitations
+
+This template uses in-memory storage for development simplicity. For production:
+
+| Component | Development | Production |
+|-----------|-------------|------------|
+| Rate Limiting | In-memory dict | Redis + slowapi |
+| Token Revocation | In-memory set | Redis or PostgreSQL |
+| Token Storage | localStorage | httpOnly cookies (recommended) |
+
+### Switching to Redis
+
+```bash
+uv add redis slowapi
+```
+
+Example Redis-backed revocation:
+```python
+import redis
+revoked = redis.Redis(host="localhost", port=6379, db=0)
+
+def revoke_token(jti: str):
+    revoked.setex(f"revoked:{jti}", 86400 * 7, "1")  # 7 days TTL
+
+def is_token_revoked(jti: str) -> bool:
+    return revoked.exists(f"revoked:{jti}")
+```
+
+### httpOnly Cookies vs localStorage
+
+| Storage | Pros | Cons |
+|---------|------|------|
+| localStorage | Simple, works offline | Vulnerable to XSS |
+| httpOnly cookie | Immune to XSS | Needs CSRF protection, more complex |
+
+For higher security, consider using httpOnly cookies with CSRF tokens instead of localStorage.
+
+### Database Integration
+
+Currently, user data is stored in JWT tokens (stateless). For persistent user storage:
+
+```bash
+uv add sqlalchemy asyncpg  # PostgreSQL
+# or
+uv add sqlalchemy aiosqlite  # SQLite
+```
+
+See the Database Integration section below for implementation details.
 
 ---
 

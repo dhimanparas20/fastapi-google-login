@@ -6,8 +6,8 @@
     <title>Authentication Successful</title>
     <script>
       (function () {
-        var accessToken = "{{ access_token }}";
-        var refreshToken = "{{ refresh_token }}";
+        var accessToken = {{ access_token | tojson }};
+        var refreshToken = {{ refresh_token | tojson }};
         localStorage.setItem("access_token", accessToken);
         localStorage.setItem("refresh_token", refreshToken);
         window.location.href = "/dashboard";

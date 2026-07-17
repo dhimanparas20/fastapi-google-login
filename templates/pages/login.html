@@ -17,7 +17,7 @@
         <p class="auth-subtitle">Sign in to access your account</p>
       </div>
 
-      {% if error %}
+      {% if error and error in ["auth_failed", "no_user_info", "session_expired"] %}
       <div class="alert alert-error" role="alert">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/>
@@ -26,7 +26,8 @@
         <span>
           {% if error == "auth_failed" %}Authentication failed. Please try again.
           {% elif error == "no_user_info" %}Could not retrieve user information.
-          {% else %}An error occurred. Please try again.{% endif %}
+          {% elif error == "session_expired" %}Your session expired. Please sign in again.
+          {% endif %}
         </span>
       </div>
       {% endif %}
